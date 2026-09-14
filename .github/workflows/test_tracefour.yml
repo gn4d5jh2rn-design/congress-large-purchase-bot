@@ -1,4 +1,4 @@
-name: Test Tracefour
+name: Test QuantEngines
 
 on:
   workflow_dispatch:
@@ -8,16 +8,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test Tracefour API
+      - name: Test QuantEngines API
         run: |
           python - <<'PY'
           import requests
 
-          url = "https://tracefour.com/v1/congress"
-          r = requests.get(url, timeout=30)
+          url = "https://quantengines.com/api/v1/trades/recent/list"
+          r = requests.get(url, params={"limit": 5}, timeout=30)
 
           print("Status:", r.status_code)
-          print(r.text[:500])
+          print(r.text[:1000])
 
           r.raise_for_status()
           PY
