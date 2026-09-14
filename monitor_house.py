@@ -280,16 +280,49 @@ else:
                 text
             )
 
-            qualifying = [
+            purchases = [
                 transaction
                 for transaction in transactions
-                if (
-                    transaction["transaction_type"] == "P"
-                    and minimum_amount(transaction["amount"]) >= 100001
-                )
+                if transaction["transaction_type"] == "P"
             ]
 
-            if qualifying:
+            groups = {}
+
+            for index, transaction in enumerate(purchases):
+                ticker_match = re.search(
+                    r"\(([A-Z][A-Z0-9.\-]{0,14})\)",
+                    transaction["asset"]
+                )
+
+                if ticker_match:
+                    ticker = ticker_match.group(1)
+                    group_key = ("ticker", ticker)
+                else:
+                    ticker = None
+                    group_key = ("single", index)
+
+                if group_key not in groups:
+                    groups[group_key] = {
+                        "ticker": ticker,
+                        "transactions": [],
+                        "minimum_total": 0
+                    }
+
+                groups[group_key]["transactions"].append(
+                    transaction
+                )
+
+                groups[group_key]["minimum_total"] += (
+                    minimum_amount(transaction["amount"])
+                )
+
+            qualifying_groups = [
+                group
+                for group in groups.values()
+                if group["minimum_total"] >= 100001
+            ]
+
+            if qualifying_groups:
                 print("🚨 QUALIFYING PURCHASE(S):")
 
                 lines = [
@@ -301,27 +334,49 @@ else:
                     ""
                 ]
 
-                for transaction in qualifying:
-                    print(
-                        transaction["asset"],
-                        "|",
-                        transaction["date"],
-                        "|",
-                        transaction["amount"]
-                    )
+                for group in qualifying_groups:
+                    transactions_in_group = group["transactions"]
 
-                    lines.append(
-                        f"Asset: {transaction['asset']}"
-                    )
-                    lines.append(
-                        f"Asset type: {transaction['asset_type']}"
-                    )
-                    lines.append(
-                        f"Trade date: {transaction['date']}"
-                    )
-                    lines.append(
-                        f"Amount: {transaction['amount']}"
-                    )
+                    if group["ticker"]:
+                        lines.append(
+                            f"Ticker: {group['ticker']}"
+                        )
+
+                    if len(transactions_in_group) > 1:
+                        lines.append(
+                            "Combined minimum disclosed: "
+                            f"${group['minimum_total']:,}"
+                        )
+                        lines.append(
+                            "Transactions in filing: "
+                            f"{len(transactions_in_group)}"
+                        )
+                        lines.append("")
+
+                    for transaction in transactions_in_group:
+                        print(
+                            transaction["asset"],
+                            "|",
+                            transaction["date"],
+                            "|",
+                            transaction["amount"]
+                        )
+
+                        lines.append(
+                            f"Asset: {transaction['asset']}"
+                        )
+                        lines.append(
+                            f"Asset type: "
+                            f"{transaction['asset_type']}"
+                        )
+                        lines.append(
+                            f"Trade date: {transaction['date']}"
+                        )
+                        lines.append(
+                            f"Amount: {transaction['amount']}"
+                        )
+                        lines.append("")
+
                     lines.append("")
 
                 lines.append(
@@ -336,7 +391,7 @@ else:
 
             else:
                 print("No qualifying purchases.")
-        
+
             seen.add(filing["id"])
         
         except Exception as error:
