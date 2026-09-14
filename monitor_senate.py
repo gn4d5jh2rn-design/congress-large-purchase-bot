@@ -67,13 +67,20 @@ def get_senate_purchases():
             "type": "purchase",
             "limit": 100,
         },
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/140.0 Safari/537.36"
+            ),
+            "Accept": "application/json,text/plain,*/*",
+        },
         timeout=30,
     )
 
     response.raise_for_status()
 
     return response.json()["trades"]
-
 
 def main():
     trades = get_senate_purchases()
