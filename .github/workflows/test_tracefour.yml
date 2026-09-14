@@ -1,4 +1,4 @@
-name: Test CongressInvests
+name: Test InsiderWatch
 
 on:
   workflow_dispatch:
@@ -8,21 +8,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test CongressInvests API
+      - name: Test InsiderWatch CSV
         run: |
           python - <<'PY'
           import requests
 
-          url = "https://congressinfor-production.up.railway.app/trades/recent"
+          url = "https://insiderwatch.ai/api/data/congress-trades.csv"
 
-          r = requests.get(
-              url,
-              params={"days": 7},
-              timeout=30,
-          )
+          r = requests.get(url, timeout=30)
 
           print("Status:", r.status_code)
-          print(r.text[:2000])
+          print("Content-Type:", r.headers.get("content-type"))
+          print(r.text[:1000])
 
           r.raise_for_status()
           PY
