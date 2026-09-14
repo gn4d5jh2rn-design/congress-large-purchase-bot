@@ -336,9 +336,10 @@ else:
 
             else:
                 print("No qualifying purchases.")
-
+        
+            seen.add(filing["id"])
+        
         except Exception as error:
             print("Error processing filing:", error)
-        seen.add(filing["id"])
-
+     
     save_seen(seen)
