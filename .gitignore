@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+quantgress-reference/
+test_*.py
+inspect_*.py
+seen_house_filings_backup.json
+monitor_senate.py
+seen_senate_trades.json
