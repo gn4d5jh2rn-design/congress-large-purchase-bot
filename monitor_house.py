@@ -280,62 +280,80 @@ else:
                 text
             )
 
-            purchases = [
-                transaction
-                for transaction in transactions
-                if transaction["transaction_type"] == "P"
-            ]
+            # Purchases and sales are evaluated separately.
+            # Same-ticker transactions of the same type are aggregated.
+            transaction_types = {
+                "P": {
+                    "label": "PURCHASE",
+                    "emoji": "🟢"
+                },
+                "S": {
+                    "label": "SALE",
+                    "emoji": "🔴"
+                }
+            }
 
-            groups = {}
+            alerts_sent = 0
 
-            for index, transaction in enumerate(purchases):
-                ticker_match = re.search(
-                    r"\(([A-Z][A-Z0-9.\-]{0,14})\)",
-                    transaction["asset"]
-                )
-
-                if ticker_match:
-                    ticker = ticker_match.group(1)
-                    group_key = ("ticker", ticker)
-                else:
-                    ticker = None
-                    group_key = ("single", index)
-
-                if group_key not in groups:
-                    groups[group_key] = {
-                        "ticker": ticker,
-                        "transactions": [],
-                        "minimum_total": 0
-                    }
-
-                groups[group_key]["transactions"].append(
+            for type_code, type_info in transaction_types.items():
+                matching_transactions = [
                     transaction
-                )
+                    for transaction in transactions
+                    if transaction["transaction_type"] == type_code
+                ]
 
-                groups[group_key]["minimum_total"] += (
-                    minimum_amount(transaction["amount"])
-                )
+                groups = {}
 
-            qualifying_groups = [
-                group
-                for group in groups.values()
-                if group["minimum_total"] >= 100001
-            ]
+                for index, transaction in enumerate(matching_transactions):
+                    ticker_match = re.search(
+                        r"\(([A-Z][A-Z0-9.\-]{0,14})\)",
+                        transaction["asset"]
+                    )
 
-            if qualifying_groups:
-                print("🚨 QUALIFYING PURCHASE(S):")
+                    if ticker_match:
+                        ticker = ticker_match.group(1)
+                        group_key = ("ticker", ticker)
+                    else:
+                        ticker = None
+                        group_key = ("single", index)
 
-                lines = [
-                    "🚨 LARGE CONGRESSIONAL PURCHASE",
-                    "",
-                    f"Member: {filing['member']}",
-                    "Chamber: House",
-                    f"Filing ID: {filing['id']}",
-                    ""
+                    if group_key not in groups:
+                        groups[group_key] = {
+                            "ticker": ticker,
+                            "transactions": [],
+                            "minimum_total": 0
+                        }
+
+                    groups[group_key]["transactions"].append(
+                        transaction
+                    )
+                    groups[group_key]["minimum_total"] += (
+                        minimum_amount(transaction["amount"])
+                    )
+
+                qualifying_groups = [
+                    group
+                    for group in groups.values()
+                    if group["minimum_total"] >= 100001
                 ]
 
                 for group in qualifying_groups:
                     transactions_in_group = group["transactions"]
+
+                    print(
+                        f"{type_info['emoji']} "
+                        f"QUALIFYING {type_info['label']}:"
+                    )
+
+                    lines = [
+                        f"{type_info['emoji']} LARGE CONGRESSIONAL "
+                        f"{type_info['label']}",
+                        "",
+                        f"Member: {filing['member']}",
+                        "Chamber: House",
+                        f"Filing ID: {filing['id']}",
+                        ""
+                    ]
 
                     if group["ticker"]:
                         lines.append(
@@ -377,20 +395,21 @@ else:
                         )
                         lines.append("")
 
-                    lines.append("")
+                    lines.append(
+                        f"PDF: {filing['url']}"
+                    )
 
-                lines.append(
-                    f"PDF: {filing['url']}"
-                )
+                    message = "\n".join(lines)
+                    send_telegram(message)
+                    alerts_sent += 1
 
-                message = "\n".join(lines)
+                    print(
+                        f"Telegram {type_info['label'].lower()} "
+                        "alert sent."
+                    )
 
-                send_telegram(message)
-
-                print("Telegram alert sent.")
-
-            else:
-                print("No qualifying purchases.")
+            if alerts_sent == 0:
+                print("No qualifying purchases or sales.")
 
             seen.add(filing["id"])
         
